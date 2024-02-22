@@ -1,3 +1,5 @@
+# pip install langchain streamlit load_dotenv PyPDF2 langchain_openai faiss-cpu
+
 import streamlit as st
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
@@ -37,8 +39,8 @@ def get_vectorstore(text_chunks):
     return vectorstore
 
 def get_conversation_chain(vectorstore):
-    #llm = ChatOpenAI()
-    llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature":0.5, "max_length":512})
+    llm = ChatOpenAI()
+    #llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature":0.5, "max_length":512})
     memory = ConversationBufferMemory(
         memory_key="chat_history",
         return_messages=True)
