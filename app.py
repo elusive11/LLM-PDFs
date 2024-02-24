@@ -1,44 +1,26 @@
-# pip install langchain streamlit load_dotenv PyPDF2 langchain_openai faiss-cpu
+# pip install langchain streamlit load_dotenv PyPDF2 langchain_openai faiss-cpu pypdf
+# https://python.langchain.com/docs/integrations/vectorstores/faiss
 
 import streamlit as st
 from dotenv import load_dotenv
-from PyPDF2 import PdfReader
-from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceInstructEmbeddings
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 #from langchain_community.chat_models import ChatOpenAI
 from langchain_openai import ChatOpenAI
 from htmlTemplate import css, bot_template, user_template
 from langchain_community.llms import HuggingFaceHub
+from langchain_community.vectorstores import FAISS
 
 
-def get_pdf_text(pdf_docs):
-    text = ""
-    for pdf in pdf_docs:
-        pdf_read = PdfReader(pdf)
-        for page in pdf_read.pages:
-            text += page.extract_text()
-    return text
-
-def get_text_chunks(raw_text):
-    text_splitter = CharacterTextSplitter(
-        separator="\n",
-        chunk_size=1000,
-        chunk_overlap=100,
-        length_function=len)
-    chunks = text_splitter.split_text(raw_text)
-    return chunks
-
-def get_vectorstore(text_chunks):
+def get_retriver():
     embeddings = OpenAIEmbeddings()
-    #embeddings = HuggingFaceInstructEmbeddings(model_name="hkunlp/instructor-xl")
-    vectorstore = FAISS.from_texts(texts=text_chunks, embedding=embeddings)
-    return vectorstore
+    db = FAISS.load_local(".aeros_docs", embeddings)
+    return db.as_retriever()
+    
 
-def get_conversation_chain(vectorstore):
+def get_conversation_chain(retriever):
     llm = ChatOpenAI()
     #llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature":0.5, "max_length":512})
     memory = ConversationBufferMemory(
@@ -46,7 +28,7 @@ def get_conversation_chain(vectorstore):
         return_messages=True)
     conversation_chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
-        retriever=vectorstore.as_retriever(),
+        retriever=retriever,
         memory=memory)
     return conversation_chain    
     
@@ -68,6 +50,8 @@ def main():
         page_icon=":books:")
     st.write(css, unsafe_allow_html=True)
 
+    if "retriever" not in st.session_state:
+        st.session_state.retriever = None
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
     if "chat_history" not in st.session_state:
@@ -86,18 +70,11 @@ def main():
         pdf_docs = st.file_uploader("Upload your PDFs here", accept_multiple_files=True)
         if (st.button("Process")):
             with st.spinner("Processing"):
-                # get pdf text
-                raw_text = get_pdf_text(pdf_docs)
-
-                # get text chunks
-                text_chunks = get_text_chunks(raw_text)
-                #st.write(text_chunks)
-
-                # create vector store
-                vectorstore = get_vectorstore(text_chunks)
+                # load retriever
+                st.session_state.retriever = get_retriver()
 
                 # create conversation
-                st.session_state.conversation = get_conversation_chain(vectorstore)
+                st.session_state.conversation = get_conversation_chain(st.session_state.retriever)
 
 
 if __name__ == '__main__':
