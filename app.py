@@ -7,9 +7,9 @@ from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
-from langchain_openai import ChatOpenAI
 from htmlTemplate import css, bot_template, user_template
 from langchain_community.vectorstores import FAISS
+from langchain_community.llms import predictionguard
 
 
 def get_retriver():
@@ -20,7 +20,7 @@ def get_retriver():
     
 
 def get_conversation_chain(retriever):
-    llm = ChatOpenAI()
+    llm = predictionguard
     memory = ConversationBufferMemory(
         memory_key="chat_history",
         return_messages=True)
